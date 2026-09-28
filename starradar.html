@@ -1,0 +1,1649 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GitHub 星标雷达 · 高星开源项目实时追踪</title>
+<meta name="description" content="自动发现 GitHub 高星开源项目，支持按总星标、星级增长速度、近期活跃实时排序，展示功能亮点、操作步骤与效果，并提供 GitHub 链接。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23f5b942' d='M12 2l2.9 6.26L21.5 9.3l-4.9 4.65 1.25 7.05L12 17.7l-5.85 3.3 1.25-7.05L2.5 9.3l6.6-1.04z'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#0a0f1e; --bg-soft:#0e1428; --panel:#131c30; --panel-2:#182238;
+  --border:#243049; --border-soft:#1b2540;
+  --text:#e8eefb; --text-2:#9aa8c3; --text-3:#6b7a99;
+  --blue:#3b82f6; --blue-2:#60a5fa; --blue-soft:rgba(59,130,246,.14);
+  --amber:#f5b942; --amber-soft:rgba(245,185,66,.14);
+  --green:#34d399; --red:#f87171; --violet:#a78bfa;
+  --mono:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,'Courier New',monospace;
+  --sans:system-ui,-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto} *{animation:none!important;transition:none!important}}
+body{
+  background:
+    radial-gradient(1100px 500px at 85% -10%, rgba(59,130,246,.14), transparent 60%),
+    radial-gradient(900px 420px at -10% 10%, rgba(245,185,66,.07), transparent 55%),
+    var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:15px; line-height:1.55;
+  min-height:100vh;
+}
+a{color:var(--blue-2);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1280px;margin:0 auto;padding:0 20px}
+
+/* ===== 顶部导航 ===== */
+header.top{
+  position:sticky;top:0;z-index:50;
+  background:rgba(10,15,30,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border-soft);
+}
+.top-inner{display:flex;align-items:center;gap:14px;padding:12px 0;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.brand svg{width:30px;height:30px;flex:none}
+.brand h1{font-size:19px;font-weight:700;letter-spacing:.5px}
+.brand h1 em{font-style:normal;color:var(--amber)}
+.brand .sub{display:block;font-size:11px;color:var(--text-3);font-weight:400;letter-spacing:0}
+.top-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.token-box{display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:0 8px;background:var(--panel)}
+.token-box input{background:transparent;border:0;outline:0;color:var(--text);font-size:12px;width:150px;padding:7px 0;font-family:var(--mono)}
+.token-box input::placeholder{color:var(--text-3)}
+.token-box .lock{font-size:12px;color:var(--text-3);cursor:help}
+.btn{
+  display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);
+  background:var(--panel);color:var(--text);border-radius:8px;padding:7px 14px;
+  font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s;
+}
+.btn:hover{background:var(--panel-2);border-color:var(--blue);text-decoration:none}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.primary:hover{background:#2f74e8}
+.btn .spin{display:none;width:13px;height:13px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:rot .8s linear infinite}
+.btn.loading .spin{display:inline-block}
+@keyframes rot{to{transform:rotate(360deg)}}
+#autoToggle .dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block}
+#autoToggle.off .dot{background:var(--text-3)}
+
+/* ===== 数据条 ===== */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+.stat{background:var(--panel);border:1px solid var(--border-soft);border-radius:12px;padding:14px 16px}
+.stat .lbl{font-size:12px;color:var(--text-3)}
+.stat .val{font-family:var(--mono);font-size:22px;font-weight:700;margin-top:4px;letter-spacing:.3px}
+.stat .val small{font-size:12px;color:var(--text-2);font-weight:400;margin-left:6px}
+.stat .val .up{color:var(--green)}
+.stat .val .warn{color:var(--amber)}
+.stat.rate .val .low{color:var(--red)}
+
+/* ===== 控制区 ===== */
+.controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 16px}
+.tabs{display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--panel)}
+.tab{
+  padding:9px 18px;font-size:13px;font-weight:600;color:var(--text-2);cursor:pointer;
+  border-right:1px solid var(--border);transition:background .15s,color .15s;user-select:none;
+}
+.tab:last-child{border-right:0}
+.tab:hover{color:var(--text)}
+.tab.on{background:var(--blue-soft);color:var(--blue-2)}
+.search-box{display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:0 12px;flex:1;min-width:220px;max-width:420px}
+.search-box svg{flex:none;width:15px;height:15px;stroke:var(--text-3)}
+.search-box input{flex:1;background:transparent;border:0;outline:0;color:var(--text);font-size:13px;padding:9px 0}
+.search-box input::placeholder{color:var(--text-3)}
+select.lang{
+  background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:10px;
+  font-size:13px;padding:9px 10px;outline:0;cursor:pointer;max-width:170px;
+}
+.updated{font-size:12px;color:var(--text-3);margin-left:auto}
+.updated b{color:var(--text-2);font-weight:600}
+
+/* ===== 图表卡 ===== */
+.chart-card{background:var(--panel);border:1px solid var(--border-soft);border-radius:14px;padding:16px 16px 8px;margin-bottom:16px}
+.chart-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.chart-head h2{font-size:15px;font-weight:700}
+.chart-head .note{font-size:11px;color:var(--text-3)}
+#topChart{width:100%;height:290px}
+
+/* ===== 列表 ===== */
+.list-head{display:flex;align-items:center;gap:10px;margin:18px 0 10px}
+.list-head h2{font-size:16px;font-weight:700}
+.list-head .count{font-size:12px;color:var(--text-3);font-family:var(--mono)}
+.list-head .right{margin-left:auto;font-size:12px;color:var(--text-3)}
+.repo{
+  background:var(--panel);border:1px solid var(--border-soft);border-radius:14px;
+  margin-bottom:12px;overflow:hidden;transition:border-color .15s, box-shadow .15s;
+}
+.repo:hover{border-color:var(--border);box-shadow:var(--shadow)}
+.repo-row{display:flex;align-items:center;gap:14px;padding:14px 16px;flex-wrap:wrap}
+.rank{font-family:var(--mono);font-size:17px;font-weight:700;color:var(--text-3);width:34px;flex:none;text-align:center}
+.rank.top3{color:var(--amber)}
+.main{flex:1;min-width:240px}
+.main .nm{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.main .nm a{color:var(--text);font-weight:700;font-size:15px}
+.main .nm a:hover{color:var(--blue-2);text-decoration:none}
+.main .nm .full{color:var(--text-3);font-size:12px;font-family:var(--mono)}
+.owner-avatar{width:20px;height:20px;border-radius:50%;flex:none}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;border:1px solid var(--border)}
+.badge.new{color:var(--green);border-color:rgba(52,211,153,.35);background:rgba(52,211,153,.08)}
+.badge.active{color:var(--blue-2);border-color:rgba(96,165,250,.35);background:rgba(96,165,250,.08)}
+.badge.top{color:var(--amber);border-color:rgba(245,185,66,.35);background:rgba(245,185,66,.08)}
+.desc{color:var(--text-2);font-size:13px;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.topics{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.topic{font-size:11px;color:var(--blue-2);background:var(--blue-soft);padding:2px 8px;border-radius:6px;font-family:var(--mono)}
+.metrics{display:flex;align-items:center;gap:14px;flex:none;font-size:12px;color:var(--text-2)}
+.metrics .m{text-align:center}
+.metrics .m .v{font-family:var(--mono);font-weight:700;font-size:14px;color:var(--text);display:block}
+.metrics .m .k{font-size:10px;color:var(--text-3)}
+.metrics .lang{display:flex;align-items:center;gap:5px}
+.metrics .lang .dot{width:9px;height:9px;border-radius:3px;display:inline-block}
+.growth-badge{flex:none;text-align:right;min-width:92px}
+.growth-badge .gv{font-family:var(--mono);font-weight:700;font-size:15px}
+.growth-badge .gv.up{color:var(--green)}
+.growth-badge .gv.flat{color:var(--text-3)}
+.growth-badge .gl{font-size:10px;color:var(--text-3);display:block}
+.actions{display:flex;gap:8px;flex:none}
+.actions .btn{padding:6px 12px;font-size:12px}
+.btn.gh{color:var(--text)}
+.btn.detail-btn.on{background:var(--blue-soft);border-color:var(--blue);color:var(--blue-2)}
+
+/* ===== 详情展开区 ===== */
+.detail{display:none;border-top:1px solid var(--border-soft);background:var(--bg-soft);padding:18px 20px}
+.repo.open .detail{display:block}
+.detail .sec-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--blue-2);margin:14px 0 8px}
+.detail .sec-title:first-child{margin-top:0}
+.detail .sec-title svg{width:15px;height:15px;flex:none}
+.tr-btn{flex:none;font-size:12px;padding:4px 10px;border:1px solid rgba(96,125,255,.45);border-radius:6px;background:transparent;color:var(--blue-2);cursor:pointer;transition:.15s;line-height:1.6}
+.tr-btn:hover{background:rgba(96,125,255,.12)}
+.tr-btn:disabled{opacity:.55;cursor:wait}
+.detail .zh{margin:4px 0 10px;padding:6px 9px;border-left:2px solid var(--blue-2);background:rgba(96,125,255,.07);color:var(--text-2);font-size:13px;line-height:1.7;border-radius:0 6px 6px 0}
+.step .zh{margin:2px 0 6px}
+/* ===== APP 壳：导航 / 用户 / 视图 ===== */
+.nav-main{display:flex;gap:6px;margin-right:14px;flex-wrap:wrap}
+.nav-item{font-size:13px;font-weight:600;color:var(--text-2);padding:7px 12px;border-radius:8px;cursor:pointer;transition:.15s}
+.nav-item:hover{background:var(--bg-soft);color:var(--text-1)}
+.nav-item.on{background:var(--blue-soft);color:var(--blue-2)}
+.user-box{display:flex;align-items:center;gap:8px;margin-left:10px;flex:none}
+.user-box .who{font-size:12px;font-weight:600;color:var(--text-2);padding:4px 10px;border:1px solid var(--border-soft);border-radius:999px;background:var(--bg-soft);white-space:nowrap}
+.user-box .who.pro{color:var(--amber);border-color:rgba(245,185,66,.4);background:rgba(245,185,66,.08)}
+.btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text-1)}
+.btn.sm{padding:5px 10px;font-size:12px}
+.view{display:none}
+/* ===== 登录 / 注册 ===== */
+.auth-card{max-width:420px;margin:28px auto;background:var(--panel);border:1px solid var(--border-soft);border-radius:14px;padding:26px 28px}
+.auth-card h2{font-size:18px;margin-bottom:14px}
+.auth-tabs{display:flex;gap:6px;margin-bottom:16px}
+.auth-tabs button{flex:1;padding:8px 0;border:1px solid var(--border-soft);border-radius:8px;background:transparent;color:var(--text-2);font-size:13px;cursor:pointer}
+.auth-tabs button.on{background:var(--blue-soft);border-color:var(--blue);color:var(--blue-2);font-weight:600}
+.auth-card label{display:block;font-size:12px;color:var(--text-3);margin-bottom:12px}
+.auth-card input{width:100%;margin-top:5px;padding:9px 12px;border:1px solid var(--border-soft);border-radius:8px;background:#0d1424;color:var(--text-1);font-size:14px;outline:none;box-sizing:border-box}
+.auth-card input:focus{border-color:var(--blue)}
+.auth-msg{min-height:20px;font-size:12px;color:#f87171;margin:4px 0 10px}
+.auth-note{font-size:12px;color:var(--text-3);margin-top:14px;line-height:1.7}
+#authSubmit{width:100%}
+/* ===== 会员中心 ===== */
+.memb-head{margin:18px 0 4px}
+.memb-head h2{font-size:20px}
+.memb-head p{font-size:12px;color:var(--text-3);margin-top:6px}
+.plan-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin:18px 0}
+.plan{position:relative;background:var(--panel);border:1px solid var(--border-soft);border-radius:14px;padding:22px 24px}
+.plan.pro{border-color:rgba(245,185,66,.5);box-shadow:0 0 0 1px rgba(245,185,66,.18)}
+.plan .tag{position:absolute;top:-10px;right:18px;background:linear-gradient(135deg,#f5b942,#f08c00);color:#1a1206;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px}
+.plan h3{font-size:16px;margin-bottom:6px}
+.plan .price{font-size:30px;font-weight:800;color:var(--text-1);margin-bottom:14px}
+.plan .price span{font-size:12px;font-weight:400;color:var(--text-3)}
+.plan ul{list-style:none;margin:0 0 16px;padding:0;display:grid;gap:8px}
+.plan ul li{font-size:13px;color:var(--text-2);padding-left:22px;position:relative}
+.plan ul li::before{content:'';position:absolute;left:0;top:5px;width:12px;height:6px;border-left:2px solid var(--green);border-bottom:2px solid var(--green);transform:rotate(-45deg)}
+.plan .btn{width:100%}
+.memb-status,.memb-orders{background:var(--panel);border:1px solid var(--border-soft);border-radius:14px;padding:18px 20px;margin-bottom:16px}
+.memb-status h3,.memb-orders h3{font-size:14px;margin-bottom:12px}
+.memb-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.memb-info .mi{background:var(--bg-soft);border:1px solid var(--border-soft);border-radius:10px;padding:10px 12px}
+.mi .k{display:block;font-size:11px;color:var(--text-3);margin-bottom:4px}
+.mi .v{font-size:14px;font-weight:700;color:var(--text-1)}
+.memb-empty{font-size:13px;color:var(--text-3);padding:8px 0}
+.ord{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px}
+.ord th{color:var(--text-3);font-weight:600;text-align:left;padding:6px 4px;border-bottom:1px solid var(--border-soft)}
+.ord td{color:var(--text-2);padding:8px 4px;border-bottom:1px solid var(--border-soft)}
+/* ===== 支付模态 ===== */
+.modal{position:fixed;inset:0;background:rgba(5,9,20,.72);display:none;align-items:center;justify-content:center;z-index:99;padding:16px}
+.modal-box{background:var(--panel);border:1px solid var(--border-soft);border-radius:14px;padding:24px 26px;width:100%;max-width:400px}
+.modal-box h3{font-size:16px;margin-bottom:6px}
+.pay-note{font-size:12px;color:var(--text-3);margin:6px 0 14px;line-height:1.7}
+.pay-methods{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.pay-methods .pm{padding:9px 0;border:1px solid var(--border-soft);border-radius:8px;background:transparent;color:var(--text-2);font-size:13px;cursor:pointer}
+.pay-methods .pm.on{background:var(--blue-soft);border-color:var(--blue);color:var(--blue-2);font-weight:600}
+.modal-box .btn{width:100%;margin-top:8px}
+/* ===== 下载按钮 ===== */
+.btn.dl-btn{margin-left:2px}
+/* ===== 使用流程图 ===== */
+.flow-wrap{background:var(--panel);border:1px solid var(--border-soft);border-radius:10px;padding:14px 12px;overflow-x:auto}
+.flow{width:100%;height:auto;display:block}
+.flow-note{font-size:12px;color:var(--text-3);margin-top:10px;line-height:1.7}
+.detail .flow-wrap{margin-bottom:4px}
+.detail p,.detail li{font-size:13px;color:var(--text-2)}
+.detail .d-loading{color:var(--text-3);font-size:13px;padding:20px 0;text-align:center}
+.feat-box{background:var(--panel);border:1px solid var(--border-soft);border-radius:10px;padding:12px 14px}
+.feat-box h4{font-size:12px;color:var(--text-3);margin-bottom:6px;font-weight:600}
+.feat-box p{font-size:13px;color:var(--text-2)}
+.steps{display:flex;flex-direction:column;gap:8px}
+.step{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--text-2)}
+.step .n{flex:none;width:20px;height:20px;border-radius:50%;background:var(--blue);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.step code,.inline-code{background:#0d1424;border:1px solid var(--border-soft);border-radius:5px;padding:1px 6px;font-family:var(--mono);font-size:12px;color:var(--amber)}
+pre.cmd{background:#0d1424;border:1px solid var(--border-soft);border-radius:10px;padding:10px 14px;overflow-x:auto;margin:6px 0;font-family:var(--mono);font-size:12px;color:var(--green);white-space:pre}
+pre.cmd .cm{color:var(--text-3)}
+.effect-img{max-width:100%;border-radius:10px;border:1px solid var(--border);display:block;margin-top:4px}
+.effect-note{font-size:12px;color:var(--text-3);margin-top:6px}
+.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.info-grid .it{background:var(--panel);border:1px solid var(--border-soft);border-radius:10px;padding:8px 12px}
+.info-grid .it .k{font-size:11px;color:var(--text-3)}
+.info-grid .it .v{font-size:12px;color:var(--text);font-family:var(--mono);word-break:break-all}
+#repoChart{width:100%;height:200px;margin-top:6px}
+.chart-empty{font-size:12px;color:var(--text-3);text-align:center;padding:40px 0;font-style:normal}
+
+/* ===== 状态 ===== */
+.state-box{text-align:center;padding:60px 20px;color:var(--text-3);font-size:14px}
+.state-box .ic{font-size:30px;margin-bottom:10px;display:block}
+.state-box .retry{margin-top:14px}
+.spinner{width:26px;height:26px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:rot .8s linear infinite;margin:0 auto 12px}
+
+footer.site{border-top:1px solid var(--border-soft);margin-top:30px;padding:22px 0 30px;color:var(--text-3);font-size:12px;text-align:center;line-height:1.8}
+footer.site b{color:var(--text-2)}
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--panel-2);border:1px solid var(--border);color:var(--text);
+  padding:10px 18px;border-radius:10px;font-size:13px;box-shadow:var(--shadow);
+  opacity:0;transition:transform .25s,opacity .25s;z-index:99;max-width:86vw;
+}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.warn{border-color:var(--amber)}
+
+/* ===== 响应式 ===== */
+@media (max-width:960px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .repo-row{flex-wrap:wrap}
+  .actions{width:100%;justify-content:flex-start;flex-wrap:wrap}
+  .growth-badge{text-align:left;min-width:0}
+  .metrics{flex-wrap:wrap;gap:10px}
+}
+@media (max-width:640px){
+  body{font-size:14px}
+  .wrap{padding:0 12px}
+  .brand h1{font-size:16px}
+  .stats{grid-template-columns:repeat(2,1fr);gap:8px}
+  .stat .val{font-size:18px}
+  .btn{min-height:44px;font-size:14px}
+  .token-box{min-height:44px}
+  .token-box input{width:96px;font-size:16px}
+  .tabs{width:100%}
+  .tab{flex:1;text-align:center;padding:9px 4px;font-size:14px}
+  .search-box{max-width:none;width:100%;min-height:44px}
+  .search-box input{font-size:16px}
+  #topChart{height:240px}
+  .repo-row{padding:12px}
+  .main{min-width:100%}
+  .detail{padding:14px}
+}
+@media (max-width:400px){
+  .stats{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 顶部导航 ===== -->
+<header class="top">
+  <div class="wrap top-inner">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#f5b942" d="M12 2l2.9 6.26L21.5 9.3l-4.9 4.65 1.25 7.05L12 17.7l-5.85 3.3 1.25-7.05L2.5 9.3l6.6-1.04z"/></svg>
+      <div>
+        <h1>GitHub <em>星标雷达</em></h1>
+        <span class="sub">高星开源项目 · 实时追踪 · 增长监测</span>
+      </div>
+    </div>
+    <nav class="nav-main" id="navMain">
+      <a class="nav-item on" data-view="dash">数据看板</a>
+      <a class="nav-item" data-view="member">会员中心</a>
+    </nav>
+    <div class="top-actions">
+      <div class="token-box" title="填写 GitHub Personal Access Token 可大幅提升接口配额（选填）">
+        <svg class="lock" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <input id="tokenInput" type="password" placeholder="GitHub Token（选填）" autocomplete="off">
+      </div>
+      <button class="btn primary" id="refreshBtn" onclick="fetchAll()"><span class="spin"></span>刷新数据</button>
+      <button class="btn" id="autoToggle" onclick="toggleAuto()"><span class="dot"></span><span id="autoLabel">自动刷新 30 分钟</span></button>
+    </div>
+    <div class="user-box" id="userBox"></div>
+  </div>
+</header>
+
+<main class="wrap">
+<div id="viewDash">
+
+  <!-- ===== 数据条 ===== -->
+  <section class="stats">
+    <div class="stat"><div class="lbl">收录项目数</div><div class="val" id="stCount">--</div></div>
+    <div class="stat"><div class="lbl">总星标数</div><div class="val" id="stStars">--</div></div>
+    <div class="stat"><div class="lbl">24 小时内活跃</div><div class="val" id="stActive">--</div></div>
+    <div class="stat rate"><div class="lbl">GitHub API 剩余配额</div><div class="val" id="stRate">--</div></div>
+  </section>
+
+  <!-- ===== 控制区 ===== -->
+  <section class="controls">
+    <div class="tabs" role="tablist">
+      <div class="tab on" data-tab="stars" role="tab">总星标排行</div>
+      <div class="tab" data-tab="growth" role="tab">增长最快</div>
+      <div class="tab" data-tab="active" role="tab">近期活跃</div>
+    </div>
+    <div class="search-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="searchInput" type="text" placeholder="搜索项目名 / 描述 / 标签…">
+    </div>
+    <select class="lang" id="langSelect" title="按编程语言筛选">
+      <option value="all">全部语言</option>
+    </select>
+    <span class="updated">数据更新于 <b id="updatedAt">--</b></span>
+  </section>
+
+  <!-- ===== 图表 ===== -->
+  <section class="chart-card">
+    <div class="chart-head">
+      <h2 id="chartTitle">总星标 Top 10</h2>
+      <span class="note" id="chartNote"></span>
+    </div>
+    <div id="topChart"></div>
+  </section>
+
+  <!-- ===== 列表 ===== -->
+  <section class="list-head">
+    <h2 id="listTitle">项目列表</h2>
+    <span class="count" id="listCount"></span>
+    <span class="right" id="sortHint"></span>
+  </section>
+  <div id="repoList"><div class="state-box"><div class="spinner"></div>正在连接 GitHub API 获取最新项目数据…</div></div>
+
+  <footer class="site">
+    <div><b>GitHub 星标雷达</b> · 数据来自 <b>GitHub Search API</b>，按官方公开接口实时拉取。</div>
+    <div>「增长最快」基于本地快照测算真实增速：每次刷新记录星标数，无历史记录时以「创建以来日均增长」为基准；「近期活跃」筛选 24 小时内仍有提交的高星项目。</div>
+    <div>未填 Token 时匿名配额约 10 次搜索/分钟；填写 Token 可提升至 30 次/分钟，刷新频率建议不低于 30 分钟。</div>
+  </footer>
+</div>
+  <!-- ===== 视图：会员中心 ===== -->
+  <div id="viewMember" class="view" style="display:none">
+    <section class="memb-head">
+      <h2>会员中心</h2>
+      <p>本地单机版 · 支付为演示流程（不会真实扣款） · 账号与权益仅保存在本机浏览器</p>
+    </section>
+    <section class="plan-grid">
+      <div class="plan free">
+        <h3>免费版</h3>
+        <div class="price">¥0<span> / 永久</span></div>
+        <ul>
+          <li>浏览全部高星开源项目</li>
+          <li>每日 3 次源码 ZIP 下载</li>
+          <li>每日 5 次详情中文翻译</li>
+          <li>排行榜、增长曲线全部图表</li>
+        </ul>
+        <button class="btn" disabled>当前套餐</button>
+      </div>
+      <div class="plan pro">
+        <div class="tag">推荐</div>
+        <h3>专业版</h3>
+        <div class="price">¥19.9<span> / 月</span></div>
+        <ul>
+          <li>不限次数源码 ZIP 下载</li>
+          <li>不限次数中文翻译</li>
+          <li>专属会员标识</li>
+          <li>优先获得后续新功能</li>
+        </ul>
+        <button class="btn primary" id="upgradeBtn">升级专业版</button>
+      </div>
+    </section>
+    <section class="memb-status">
+      <h3>我的权益</h3>
+      <div id="membStatus"></div>
+    </section>
+    <section class="memb-orders">
+      <h3>我的订单</h3>
+      <div id="orderList"></div>
+    </section>
+  </div>
+  <!-- ===== 视图：登录 / 注册 ===== -->
+  <div id="viewAuth" class="view" style="display:none">
+    <div class="auth-card">
+      <h2 id="authTitle">登录</h2>
+      <div class="auth-tabs">
+        <button type="button" id="tabLogin" class="on">登录</button>
+        <button type="button" id="tabReg">注册</button>
+      </div>
+      <form id="formAuth" onsubmit="return false">
+        <label>用户名
+          <input id="authUser" type="text" autocomplete="off" required>
+        </label>
+        <label>密码（至少 6 位）
+          <input id="authPass" type="password" autocomplete="off" required>
+        </label>
+        <div class="auth-msg" id="authMsg"></div>
+        <button class="btn primary" id="authSubmit" type="submit">登 录</button>
+      </form>
+      <p class="auth-note">本地账号：数据仅保存在本机浏览器，用于管理下载/翻译额度与会员权益。演示级加密，勿用重要密码。</p>
+    </div>
+  </div>
+</main>
+
+<div class="modal" id="payModal" style="display:none">
+  <div class="modal-box">
+    <h3>升级专业版 · ¥19.9 / 月</h3>
+    <p class="pay-note">演示环境：不会产生真实扣款。点击确认后将在本机开通 30 天专业版会员。</p>
+    <div class="pay-methods">
+      <button type="button" class="pm on">微信支付</button>
+      <button type="button" class="pm">支付宝</button>
+      <button type="button" class="pm">银行卡</button>
+    </div>
+    <button class="btn primary" id="payConfirm" type="button">确认支付 ¥19.9</button>
+    <button class="btn ghost" id="payCancel" type="button">取消</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- ==== JS:START ==== -->
+<script>
+'use strict';
+/* ============================================================
+ * 数据层：常量、工具、本地快照、GitHub API 拉取、增长测算
+ * ============================================================ */
+
+var SNAP_KEY = 'gh_star_radar_snaps_v1';
+var TOKEN_KEY = 'gh_star_radar_token_v1';
+var AUTO_KEY = 'gh_star_radar_auto_v1';
+var CACHE_KEY = 'gh_star_radar_ready_v1';
+
+var STATE = {
+  repos: new Map(),          // full_name -> repo
+  order: [],                 // 排序后的 full_name 数组
+  tab: 'stars',              // stars | growth | active
+  keyword: '',
+  lang: 'all',
+  loading: false,
+  lastUpdated: null,
+  rate: { limit: 60, remaining: 60, reset: 0 },
+  token: '',
+  autoRefresh: true,
+  readmeCache: {},           // 内存 README 缓存
+  refreshTimer: null,
+  searchPage: 1              // 总星标页翻页
+};
+
+var LANG_COLORS = {
+  JavaScript:'#f1e05a', TypeScript:'#3178c6', Python:'#3572A5', Java:'#b07219',
+  'C++':'#f34b7d', C:'#555555', 'C#':'#178600', Go:'#00ADD8', Rust:'#dea584',
+  Ruby:'#701516', PHP:'#4F5D95', Swift:'#F05138', Kotlin:'#A97BFF', Dart:'#00B4AB',
+  Shell:'#89e051', HTML:'#e34c26', CSS:'#563d7c', Vue:'#41b883', Scala:'#c22d40',
+  Lua:'#000080', R:'#198CE7', Julia:'#a270ba', Elixir:'#6e4a7e', Haskell:'#5e5086',
+  Zig:'#ec915c', Solidity:'#AA6746', Assembly:'#6E4C13', OCaml:'#ef7a08',
+  'Jupyter Notebook':'#DA5B0B', 'Objective-C':'#438eff', Perl:'#0298c3', Clojure:'#db5855',
+  Erlang:'#B83998', Nim:'#ffc200', V:'#4f87c4', Crystal:'#000100', MATLAB:'#e16737',
+  PowerShell:'#012456'
+};
+function langColor(l){ return LANG_COLORS[l] || '#8b95a9'; }
+
+/* ---------- 工具 ---------- */
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function fmt(n){
+  n = Number(n) || 0;
+  if (n >= 1e9) return (n/1e9).toFixed(1)+'B';
+  if (n >= 1e6) return (n/1e6).toFixed(1)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return String(n);
+}
+function fmtInt(n){ return (Number(n)||0).toLocaleString('en-US'); }
+function fmtDT(iso){
+  if(!iso) return '--';
+  var d = new Date(iso);
+  if(isNaN(d)) return '--';
+  var now = new Date();
+  var diff = now - d;
+  if (diff < 0) return d.toLocaleDateString('zh-CN');
+  var min = diff/60000, hr = diff/3600000, day = diff/86400000;
+  if (min < 60) return Math.max(1,Math.floor(min)) + ' 分钟前';
+  if (hr < 24) return Math.floor(hr) + ' 小时前';
+  if (day < 7) return Math.floor(day) + ' 天前';
+  return d.toLocaleDateString('zh-CN');
+}
+function daysAgoISO(days){
+  var d = new Date(Date.now() - days*86400000);
+  return d.toISOString().slice(0,10);
+}
+function toast(msg, warn){
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (warn ? ' warn' : '');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function(){ el.className = 'toast'; }, 3200);
+}
+
+/* ---------- 本地快照（用于测算真实增速） ---------- */
+function loadSnap(){
+  try {
+    var raw = localStorage.getItem(SNAP_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch(e){ return {}; }
+}
+function saveSnap(obj){
+  try {
+    localStorage.setItem(SNAP_KEY, JSON.stringify(obj));
+  } catch(e){ /* 配额满则放弃快照，不影响主流程 */ }
+}
+/* ---------- 本地数据缓存（首屏秒开） ---------- */
+function saveCache(){
+  try {
+    var arr = [], count = 0;
+    STATE.repos.forEach(function(r){
+      if (count >= 150) return;
+      count++;
+      arr.push({
+        full_name: r.full_name, name: r.name, owner: r.owner, html_url: r.html_url,
+        description: r.description, stargazers_count: r.stargazers_count,
+        forks_count: r.forks_count, language: r.language, topics: r.topics,
+        license: r.license, created_at: r.created_at, pushed_at: r.pushed_at,
+        homepage: r.homepage, open_issues_count: r.open_issues_count, tags: r.tags
+      });
+    });
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      savedAt: STATE.lastUpdated ? STATE.lastUpdated.toISOString() : new Date().toISOString(),
+      items: arr
+    }));
+  } catch(e){ /* 缓存失败不影响主流程 */ }
+}
+function hydrateCache(){
+  try {
+    var raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return false;
+    var data = JSON.parse(raw);
+    if (!data || !data.items || !data.items.length) return false;
+    STATE.repos.clear();
+    data.items.forEach(function(it){
+      if (!it || !it.owner || !it.owner.login || !it.name || !it.full_name || !/^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(it.full_name)) return;
+      it.tags = it.tags || [];
+      it.detailLoaded = false;
+      STATE.repos.set(it.full_name, it);
+    });
+    STATE.lastUpdated = new Date(data.savedAt);
+    return true;
+  } catch(e){ return false; }
+}
+function recordSnapshots(){
+  var snaps = loadSnap();
+  var now = Date.now();
+  STATE.order.forEach(function(fn){
+    var r = STATE.repos.get(fn);
+    if(!r) return;
+    var arr = snaps[fn] || [];
+    var last = arr.length ? arr[arr.length-1] : null;
+    // 同一次会话内重复记录只保留最新一条，避免刷屏
+    if (last && (now - last.ts) < 60000 && Math.abs(last.stars - r.stargazers_count) < 50) {
+      arr[arr.length-1] = { stars: r.stargazers_count, ts: now };
+    } else {
+      arr.push({ stars: r.stargazers_count, ts: now });
+    }
+    if (arr.length > 4) arr = arr.slice(-4);
+    snaps[fn] = arr;
+  });
+  saveSnap(snaps);
+}
+function getGrowth(repo){
+  var snaps = loadSnap();
+  var h = snaps[repo.full_name] || [];
+  var now = Date.now();
+  var ageDays = (now - new Date(repo.created_at).getTime()) / 86400000;
+  var creation = (ageDays > 0.5) ? repo.stargazers_count / ageDays : null;
+  var recent = null, delta = null, histDays = null;
+  if (h.length >= 2) {
+    var old = h[0];
+    histDays = (now - old.ts) / 86400000;
+    if (histDays > 0.06) {
+      recent = (repo.stargazers_count - old.stars) / histDays;
+      delta = repo.stargazers_count - old.stars;
+    }
+  }
+  var score = (recent != null) ? recent : (creation != null ? creation : 0);
+  return { score: score, recent: recent, creation: creation, delta: delta, histDays: histDays, ageDays: ageDays };
+}
+function round1(n){ return Math.round(n * 10) / 10; }
+function growthLabel(repo){
+  var g = getGrowth(repo);
+  if (g.recent != null) {
+    var sign = g.delta >= 0 ? '+' : '';
+    var cls = g.delta >= 0 ? 'up' : 'flat';
+    return { v: sign + fmtInt(g.delta) + ' 星', l: '近' + Math.max(1,Math.round(g.histDays)) + ' 天 · 日均' + (g.recent>=0?'+':'') + fmt(round1(g.recent)), cls: cls, score: g.score };
+  }
+  if (g.creation != null) {
+    return { v: '+' + fmt(round1(g.creation)) + '/天', l: '创建以来日均增长', cls: 'up', score: g.score };
+  }
+  return { v: '--', l: '数据不足', cls: 'flat', score: 0 };
+}
+
+/* ---------- GitHub API ---------- */
+function apiHeaders(){
+  var h = { 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+  if (STATE.token) h['Authorization'] = 'Bearer ' + STATE.token;
+  return h;
+}
+function captureRate(headers){
+  var rem = headers.get('x-ratelimit-remaining');
+  var lim = headers.get('x-ratelimit-limit');
+  var reset = headers.get('x-ratelimit-reset');
+  if (rem != null) STATE.rate.remaining = parseInt(rem,10);
+  if (lim != null) STATE.rate.limit = parseInt(lim,10);
+  if (reset != null) STATE.rate.reset = parseInt(reset,10);
+}
+function apiSearch(q, sort, order, perPage, page){
+  var params = 'q=' + encodeURIComponent(q) + '&sort=' + sort + '&order=' + order +
+               '&per_page=' + perPage + '&page=' + (page||1);
+  var ctrl = ('AbortController' in window) ? new AbortController() : null;
+  var timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, 20000) : null;
+  var url = 'https://api.github.com/search/repositories?' + params;
+  var opts = { headers: apiHeaders() };
+  if (ctrl) opts.signal = ctrl.signal;
+  return fetch(url, opts)
+    .then(function(res){
+      captureRate(res.headers);
+      if (!res.ok) {
+        if (res.status === 403) {
+          throw new Error('API 配额已用尽（' + (STATE.token ? '请稍后再试' : '建议填写 GitHub Token 提升配额') + '）');
+        }
+        if (res.status === 422) throw new Error('搜索条件未通过 GitHub 校验');
+        return res.json().then(function(j){ throw new Error(j.message || ('HTTP ' + res.status)); });
+      }
+      return res.json();
+    })
+    .catch(function(err){
+      if (err && err.name === 'AbortError') throw new Error('请求超时，请检查网络后重试');
+      throw err;
+    })
+    .finally(function(){
+      if (timer) clearTimeout(timer);
+    });
+}
+function fetchAll(){
+  STATE.loading = true;
+  setBtnLoading(true);
+  renderState('正在连接 GitHub API…');
+  var qTop  = 'stars:>8000';
+  var qNew  = 'created:>' + daysAgoISO(45) + ' stars:>150';
+  var qAct  = 'pushed:>' + daysAgoISO(1) + ' stars:>800';
+  return Promise.all([
+    apiSearch(qTop, 'stars', 'desc', 100, 1),
+    apiSearch(qNew, 'stars', 'desc', 50, 1),
+    apiSearch(qAct, 'stars', 'desc', 50, 1)
+  ]).then(function(results){
+    mergeRepos(results[0].items, ['top']);
+    mergeRepos(results[1].items, ['new']);
+    mergeRepos(results[2].items, ['active']);
+    STATE.lastUpdated = new Date();
+    recordSnapshots();
+    var all = [];
+    STATE.repos.forEach(function(r){ all.push(r); });
+    renderAll();
+    saveCache();
+  }).catch(function(err){
+    renderError(err);
+  }).finally(function(){
+    STATE.loading = false;
+    setBtnLoading(false);
+  });
+}
+function mergeRepos(items, tags){
+  (items||[]).forEach(function(it){
+    // 数据完整性过滤：owner/name/full_name 缺失或格式非法的条目直接跳过，避免下游请求拼出非法参数
+    if (!it || !it.owner || !it.owner.login || !it.name || !it.full_name || !/^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(it.full_name)) return;
+    var key = it.full_name;
+    var r = STATE.repos.get(key);
+    if (r) {
+      tags.forEach(function(t){ if (r.tags.indexOf(t) < 0) r.tags.push(t); });
+      r.stargazers_count = it.stargazers_count;
+      r.forks_count = it.forks_count;
+      r.pushed_at = it.pushed_at;
+    } else {
+      it.tags = tags.slice();
+      it.detailLoaded = false;
+      STATE.repos.set(key, it);
+    }
+  });
+}
+function loadMoreStars(){
+  if (STATE.loading) return;
+  STATE.loading = true;
+  setBtnLoading(true, 'more');
+  apiSearch('stars:>8000', 'stars', 'desc', 100, STATE.searchPage + 1)
+    .then(function(res){
+      STATE.searchPage++;
+      mergeRepos(res.items, ['top']);
+      renderAll();
+    }).catch(function(err){
+      toast('加载更多失败：' + err.message, true);
+    }).finally(function(){
+      STATE.loading = false;
+      setBtnLoading(false);
+    });
+}
+/* ============================================================
+ * UI 层：排序筛选、卡片渲染、详情展开、README 解析
+ * ============================================================ */
+
+function sortByTab(){
+  var list = [];
+  STATE.repos.forEach(function(r){ list.push(r); });
+  if (STATE.tab === 'stars') {
+    list.sort(function(a,b){ return b.stargazers_count - a.stargazers_count; });
+  } else if (STATE.tab === 'growth') {
+    list.sort(function(a,b){ return getGrowth(b).score - getGrowth(a).score; });
+  } else {
+    list.sort(function(a,b){ return (new Date(b.pushed_at)) - (new Date(a.pushed_at)); });
+  }
+  var kw = STATE.keyword.trim().toLowerCase();
+  var lang = STATE.lang;
+  list = list.filter(function(r){
+    if (lang !== 'all' && (r.language || '未知') !== lang) return false;
+    if (!kw) return true;
+    var hay = (r.name + ' ' + r.full_name + ' ' + (r.description||'') + ' ' + (r.topics||[]).join(' ')).toLowerCase();
+    return hay.indexOf(kw) >= 0;
+  });
+  STATE.order = list.map(function(r){ return r.full_name; });
+  return list;
+}
+function renderAll(){
+  updateStats();
+  renderLangFilter();
+  renderList();
+  renderChart();
+  var upd = document.getElementById('updatedAt');
+  upd.textContent = STATE.lastUpdated ? STATE.lastUpdated.toLocaleTimeString('zh-CN') : '--';
+  document.title = 'GitHub 星标雷达 · ' + STATE.order.length + ' 个项目';
+}
+function updateStats(){
+  var total = STATE.repos.size;
+  var sum = 0, act = 0, now = Date.now();
+  STATE.repos.forEach(function(r){
+    sum += r.stargazers_count;
+    if (now - new Date(r.pushed_at).getTime() < 86400000) act++;
+  });
+  document.getElementById('stCount').textContent = fmtInt(total);
+  document.getElementById('stStars').textContent = fmtInt(sum);
+  document.getElementById('stActive').textContent = fmtInt(act);
+  var rate = document.getElementById('stRate');
+  var rem = STATE.rate.remaining, lim = STATE.rate.limit;
+  rate.innerHTML = '<span class="' + (rem < 5 ? 'low' : (rem < 20 ? 'warn' : 'up')) + '">' + rem + '</span>' +
+                   '<small> / ' + (lim || '--') + '</small>';
+  rate.title = '搜索接口剩余配额（匿名 10 次/分钟，带 Token 30 次/分钟）';
+}
+function renderLangFilter(){
+  var sel = document.getElementById('langSelect');
+  var cur = sel.value;
+  var counts = {};
+  STATE.repos.forEach(function(r){
+    var l = r.language || '未知';
+    counts[l] = (counts[l]||0) + 1;
+  });
+  var langs = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a]; });
+  var html = '<option value="all">全部语言（' + STATE.repos.size + '）</option>';
+  langs.forEach(function(l){
+    html += '<option value="' + esc(l) + '"' + (l===cur?' selected':'') + '>' + esc(l) + '（' + counts[l] + '）</option>';
+  });
+  sel.innerHTML = html;
+  sel.value = cur;
+}
+function renderState(msg){
+  document.getElementById('repoList').innerHTML =
+    '<div class="state-box"><div class="spinner"></div>' + esc(msg) + '</div>';
+}
+function renderError(err){
+  document.getElementById('repoList').innerHTML =
+    '<div class="state-box"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#f5b942" stroke-width="2" style="margin:0 auto 10px;display:block"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>' + esc(err.message || String(err)) +
+    '<br><button class="btn primary retry" onclick="fetchAll()">重试</button></div>';
+}
+function renderList(){
+  var list = sortByTab();
+  var el = document.getElementById('repoList');
+  var titles = { stars:'总星标排行', growth:'增长最快', active:'近期活跃' };
+  var hints = {
+    stars: '按 GitHub 星标数从高到低排序',
+    growth: '按实测增速排序：有本地快照用「近N天日均增长」，否则用「创建以来日均增长」',
+    active: '按最近一次代码推送时间排序（24 小时内活跃的高星项目）'
+  };
+  document.getElementById('listTitle').textContent = titles[STATE.tab];
+  document.getElementById('sortHint').textContent = hints[STATE.tab];
+  document.getElementById('listCount').textContent = list.length + ' 个';
+  document.getElementById('chartTitle').textContent = (STATE.tab==='stars' ? '总星标 Top 10' : STATE.tab==='growth' ? '增长最快 Top 10' : '24 小时内最活跃 Top 10');
+  if (!list.length) {
+    el.innerHTML = '<div class="state-box">没有匹配的项目。试试清空搜索词或切换语言筛选。</div>';
+    return;
+  }
+  var html = '';
+  list.forEach(function(r, i){
+    html += cardHTML(r, i);
+  });
+  if (STATE.tab === 'stars' && STATE.searchPage < 5) {
+    html += '<div style="text-align:center;padding:10px 0">' +
+            '<button class="btn" id="moreBtn">加载更多（第 ' + (STATE.searchPage+1) + ' 页，最多 5 页）</button></div>';
+  }
+  el.innerHTML = html;
+  var more = document.getElementById('moreBtn');
+  if (more) more.addEventListener('click', loadMoreStars);
+}
+function cardHTML(r, i){
+  var g = growthLabel(r);
+  var badges = '';
+  if (r.tags.indexOf('top') >= 0) badges += '<span class="badge top">高星</span>';
+  if (r.tags.indexOf('new') >= 0) badges += '<span class="badge new">新锐</span>';
+  if (r.tags.indexOf('active') >= 0) badges += '<span class="badge active">活跃</span>';
+  var home = (r.homepage && /^https?:/i.test(r.homepage)) ? r.homepage : '';
+  var lic = (r.license && r.license.spdx_id && r.license.spdx_id !== 'NOASSERTION') ? r.license.spdx_id : '未标注';
+  return '<div class="repo" data-fn="' + esc(r.full_name) + '">' +
+    '<div class="repo-row">' +
+      '<div class="rank' + (i<3?' top3':'') + '">#' + (i+1) + '</div>' +
+      '<div class="main">' +
+        '<div class="nm">' +
+          (r.owner && r.owner.avatar_url ? '<img class="owner-avatar" src="' + esc(r.owner.avatar_url) + '&s=40" alt="" loading="lazy">' : '') +
+          '<a href="' + esc(r.html_url) + '" target="_blank" rel="noopener">' + esc(r.full_name) + '</a>' +
+          badges +
+        '</div>' +
+        (r.description ? '<div class="desc">' + esc(r.description) + '</div>' : '<div class="desc" style="color:var(--text-3)">（无项目描述）</div>') +
+        (r.topics && r.topics.length ? '<div class="topics">' + r.topics.slice(0,6).map(function(t){ return '<span class="topic">' + esc(t) + '</span>'; }).join('') + '</div>' : '') +
+      '</div>' +
+      '<div class="metrics">' +
+        '<div class="m"><span class="v"><svg viewBox="0 0 24 24" width="13" height="13" fill="#f5b942" style="vertical-align:-2px;margin-right:3px"><path d="M12 2l2.9 6.26L21.5 9.3l-4.9 4.65 1.25 7.05L12 17.7l-5.85 3.3 1.25-7.05L2.5 9.3l6.6-1.04z"/></svg>' + fmtInt(r.stargazers_count) + '</span><span class="k">星标</span></div>' +
+        '<div class="m"><span class="v">' + fmtInt(r.forks_count) + '</span><span class="k">Fork</span></div>' +
+        (r.language ? '<div class="m lang"><span class="dot" style="background:' + langColor(r.language) + '"></span>' + esc(r.language) + '</div>' : '') +
+      '</div>' +
+      '<div class="growth-badge"><span class="gv ' + g.cls + '">' + esc(g.v) + '</span><span class="gl">' + esc(g.l) + '</span></div>' +
+      '<div class="actions">' +
+        '<a class="btn gh" href="' + esc(r.html_url) + '" target="_blank" rel="noopener"><svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.51-.01-.52.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg> GitHub</a>' +
+        (home ? '<a class="btn gh" href="' + esc(home) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg> 官网/演示</a>' : '') +
+        '<button class="btn detail-btn" data-act="detail"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg> 功能 / 步骤 / 效果</button><button class="btn dl-btn" data-act="dl" title="下载源码 ZIP 到本机"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg> 下载源码</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="detail" id="dt-' + esc(r.full_name.replace(/\W/g,'_')) + '">' +
+      '<div class="d-loading">正在解析 README，提取功能、操作步骤与效果图…</div>' +
+    '</div>' +
+  '</div>';
+}
+
+/* ---------- 详情展开 + README ---------- */
+document.getElementById('repoList').addEventListener('click', function(ev){
+  var dl = ev.target.closest('[data-act="dl"]');
+  if (dl) { var rc = dl.closest('.repo'); if (rc) triggerDownload(rc.getAttribute('data-fn'), dl); return; }
+  var btn = ev.target.closest('[data-act="detail"]');
+  if (!btn) return;
+  var card = btn.closest('.repo');
+  if (!card) return;
+  var fn = card.getAttribute('data-fn');
+  if (!fn || !/^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(fn)) return;
+  var open = card.classList.contains('open');
+  card.classList.toggle('open');
+  btn.classList.toggle('on', !open);
+  if (!open) loadReadme(fn, card);
+});
+function fetchTimeout(url, opts, ms){
+  var ctrl = ('AbortController' in window) ? new AbortController() : null;
+  var timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, ms) : null;
+  var o = ctrl ? Object.assign({}, opts, { signal: ctrl.signal }) : opts;
+  return fetch(url, o).then(function(res){
+    if (timer) clearTimeout(timer);
+    return res;
+  }, function(e){
+    if (timer) clearTimeout(timer);
+    throw e;
+  });
+}
+function fetchFirst(urls, opts){
+  var i = 0;
+  function tryNext(){
+    if (i >= urls.length) return Promise.reject(new Error('README 未找到'));
+    var u = urls[i++];
+    // 单次 raw 尝试 8 秒超时；超时/失败直接走后续兜底（API），不继续耗在 raw 上
+    return fetchTimeout(u, opts, 8000).then(function(res){
+      if (res.ok) return res.text();
+      return tryNext();
+    });
+  }
+  return tryNext();
+}
+function loadReadme(fn, card){
+  var r = STATE.repos.get(fn);
+  if (!r || r.detailLoaded) return;
+  r.detailLoaded = true;
+  var parts = fn.split('/');
+  var rawNames = ['README.md','readme.md','Readme.md','README.markdown','readme.markdown',
+                  'README.rst','readme.rst','README','readme','Readme'];
+  var rawUrls = rawNames.map(function(f){
+    return 'https://raw.githubusercontent.com/' + parts[0] + '/' + parts[1] + '/HEAD/' + f;
+  });
+  fetchFirst(rawUrls, { headers: { 'Accept': 'text/plain' } })
+    .catch(function(){
+      // 回退：GitHub API 读取（占用 1 次核心配额，国内网络更稳定、可解析任意 README 文件名）
+      return fetchTimeout('https://api.github.com/repos/' + fn + '/readme', {
+        headers: Object.assign(apiHeaders(), { 'Accept': 'application/vnd.github.raw+json' })
+      }, 15000).then(function(res){
+        captureRate(res.headers);
+        if (!res.ok) throw new Error('README 不可用');
+        return res.text();
+      });
+    })
+    .then(function(md){
+      STATE.readmeCache[fn] = md;
+      renderDetail(card, r, md);
+    })
+    .catch(function(err){
+      var box = card.querySelector('.detail');
+      box.innerHTML = '<div class="d-loading">README 获取失败：' + esc(err.message || '网络错误') +
+        '。<a href="' + esc(r.html_url) + '" target="_blank" rel="noopener">前往仓库查看</a></div>';
+    });
+}
+function renderDetail(card, r, md){
+  var box = card.querySelector('.detail');
+  var parsed = parseReadme(md, r);
+  var home = (r.homepage && /^https?:/i.test(r.homepage)) ? r.homepage : '';
+  var lic = (r.license && r.license.spdx_id && r.license.spdx_id !== 'NOASSERTION') ? r.license.spdx_id : '未标注';
+  var html = '';
+
+  html += '<div class="sec-title" style="justify-content:space-between"><span style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 14.9 7.2 16.9l.9-5.4L4.2 7.7l5.4-.8z"/></svg>功能亮点</span><button type="button" class="tr-btn">译成中文</button><button type="button" class="tr-btn" data-act="dl">下载源码</button></div>' +
+    '<div class="feat-box"><h4>项目简介</h4><p>' + (r.description ? esc(r.description) : '暂无简介') + '</p></div>' +
+    (r.topics && r.topics.length ? '<div class="feat-box" style="margin-top:8px"><h4>能力标签</h4><div class="topics">' + r.topics.map(function(t){ return '<span class="topic">' + esc(t) + '</span>'; }).join('') + '</div></div>' : '') +
+    (parsed.intro ? '<div class="feat-box" style="margin-top:8px"><h4>README 摘要</h4>' + parsed.intro + '</div>' : '');
+
+  html += '<div class="sec-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6M12 19h8"/></svg>' + (parsed.fromSection ? '操作步骤' : '上手命令') + '</div>';
+  if (parsed.steps.length) {
+    html += '<div class="steps">';
+    parsed.steps.forEach(function(s, i){
+      html += '<div class="step"><span class="n">' + (i+1) + '</span><div>' + s + '</div></div>';
+    });
+    html += '</div>';
+    if (!parsed.fromSection) {
+      html += '<p style="margin-top:8px;font-size:12px;color:var(--text-3)">该 README 未使用标准「安装/使用」章节标题，以上命令为从 README 中自动提取的上手示例。</p>';
+    }
+  } else {
+    html += '<p>该仓库未提供可提取的安装/使用说明（可能为资源合集、资料库类项目）。' + (home ? '可访问 <a href="' + esc(home) + '" target="_blank" rel="noopener">官网</a> 或 ' : '可 ') + '<a href="' + esc(r.html_url) + '" target="_blank" rel="noopener">前往仓库查看完整 README</a> 了解详情。</p>';
+  }
+
+  html += '<div class="sec-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>效果展示</div>';
+  if (parsed.image) {
+    html += '<img class="effect-img" src="' + esc(parsed.image) + '" alt="项目效果图" loading="lazy" onerror="this.style.display=\'none\'">' +
+            '<div class="effect-note">效果图取自项目 README；若未显示，可访问下方官网或仓库查看实际演示。</div>';
+  } else {
+    html += '<p class="effect-note">README 未附带效果图。' + (home ? '可访问 <a href="' + esc(home) + '" target="_blank" rel="noopener">官网/在线演示</a> 或 ' : '') + '<a href="' + esc(r.html_url) + '" target="_blank" rel="noopener">仓库页面</a> 查看效果。</p>';
+  }
+  if (home) html += '<p style="margin-top:8px"><a class="btn gh" href="' + esc(home) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg> 打开在线演示</a></p>';
+
+  html += '<div class="sec-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg>项目信息</div>' +
+    '<div class="info-grid">' +
+    '<div class="it"><div class="k">许可证</div><div class="v">' + esc(lic) + '</div></div>' +
+    '<div class="it"><div class="k">创建时间</div><div class="v">' + fmtDT(r.created_at) + '</div></div>' +
+    '<div class="it"><div class="k">最近推送</div><div class="v">' + fmtDT(r.pushed_at) + '</div></div>' +
+    '<div class="it"><div class="k">Open Issues</div><div class="v">' + fmtInt(r.open_issues_count) + '</div></div>' +
+    '</div>';
+
+  html += '<div class="sec-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="5" height="5" rx="1"/><rect x="12" y="4" width="5" height="5" rx="1"/><rect x="3" y="15" width="5" height="5" rx="1"/><rect x="12" y="15" width="5" height="5" rx="1"/><path d="M6.5 9v2a2 2 0 0 0 2 2h1"/><path d="M15.5 9v2a2 2 0 0 1-2 2h-1"/><path d="M8 12h3"/><path d="M16 12h-2"/></svg>使用方式流程图</div>' +
+    '<div class="flow-wrap">' + flowSVG(parsed) + '</div>';
+  html += '<div class="sec-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>星级增长曲线（本地快照）</div>' +
+    '<div id="repoChart-' + esc(r.full_name.replace(/\W/g,'_')) + '" style="width:100%;height:200px"></div>';
+
+  box.innerHTML = html;
+  drawRepoChart(r);
+  var trBtn = box.querySelector('.tr-btn');
+  if (trBtn) trBtn.addEventListener('click', function(){ toggleTranslate(box, trBtn); });
+}
+
+/* ---------- 中文翻译（MyMemory 免费接口；命令/代码自动保留原文） ---------- */
+var zhCache = {};
+function zhTranslate(text, done){
+  if (!text || !text.trim()) { done('', false); return; }
+  var key = text;
+  if (zhCache[key] !== undefined) { done(zhCache[key], false); return; }
+  var segs = [];
+  for (var i = 0; i < text.length; i += 450) segs.push(text.slice(i, i + 450));
+  var out = [], idx = 0, failed = false;
+  function next(){
+    if (idx >= segs.length) { var zh = out.join(''); zhCache[key] = zh; done(zh, failed); return; }
+    var seg = segs[idx++];
+    fetch('https://api.mymemory.translated.net/get?q=' + encodeURIComponent(seg) + '&langpair=en|zh-CN')
+      .then(function(res){ return res.json(); })
+      .then(function(j){ var t = (j && j.responseData && j.responseData.translatedText) ? j.responseData.translatedText : seg; out.push(t); next(); })
+      .catch(function(){ failed = true; out.push(seg); next(); });
+  }
+  next();
+}
+function toggleTranslate(box, btn){
+  if (btn.dataset.on === '1') {
+    box.querySelectorAll('.zh').forEach(function(el){ el.remove(); });
+    btn.textContent = '译成中文'; btn.dataset.on = ''; btn.disabled = false; return;
+  }
+  var q = checkQuota('tr');
+  if (!q.ok) {
+    toast(q.msg === '请先登录' ? '中文翻译需要登录，请先注册 / 登录' : '免费版今日翻译额度已用完，升级专业版不限次数', true);
+    if (q.msg === '请先登录') openView('auth');
+    return;
+  }
+  btn.dataset.on = '1'; btn.textContent = '翻译中…'; btn.disabled = true;
+  var targets = [];
+  box.querySelectorAll('.feat-box p, .step > div').forEach(function(el){
+    if (el.closest('.zh')) return;
+    if (el.querySelector('pre.cmd')) return;
+    var t = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (t && /[A-Za-z]/.test(t) && t.length > 4) targets.push(el);
+  });
+  if (!targets.length) {
+    btn.textContent = '译成中文'; btn.dataset.on = ''; btn.disabled = false; toast('暂无可翻译的英文内容'); return;
+  }
+  var anyFail = false, doneCount = 0;
+  targets.forEach(function(el){
+    var orig = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    zhTranslate(orig, function(zh, failed){
+      if (failed) anyFail = true;
+      if (zh && zh !== orig) { var d = document.createElement('div'); d.className = 'zh'; d.textContent = zh; el.insertAdjacentElement('afterend', d); }
+      doneCount++;
+      if (doneCount >= targets.length) { btn.textContent = '收起翻译'; btn.disabled = false; if (anyFail) toast('部分段落翻译失败，已保留原文'); }
+    });
+  });
+}
+
+/* ---------- README 解析（安全、轻量） ---------- */
+function mdInline(s){
+  s = esc(s);
+  s = s.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/\[([^\]]+)\]\((https?:[^)\s]+)(?:\s+"[^"]*")?\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  return s;
+}
+/* 步骤章节关键词：宽匹配，先精确/前缀，中文含即中 */
+var STEP_PREFIX = ['install','installation','installing','setup','getting started','get started',
+  'quick start','quickstart','usage','how to use','examples','documentation','docs','guide','tutorial',
+  '使用','安装','快速开始','快速上手','快速入门','开始使用','部署','运行','示例','用法','入门','上手','启动','试用','体验'];
+var STEP_WORD = ['start','run','demo','use'];
+var CMD_RE = /(npm\s+(install|i\s|create)|pnpm\s+(add|install|create)|yarn\s+(add|install)|pip\d?\s+install|brew\s+install|cargo\s+(install|add)|go\s+(install|get|run|build)|docker\s+(run|pull|compose|build)|git\s+clone|npx\s|apt(-get)?\s+install|curl\s+(-[A-Za-z]+\s+)?https?:|wget\s|composer\s+require|deno\s|bun\s+(add|install|run)|uv\s+(add|install)|flutter\s+create|mvn\s+install|gradle\s+install|pipenv\s+install|poetry\s+add|cnpm\s+install)/i;
+
+function cleanHeadingText(s){
+  s = s.replace(/^\s{0,3}(?:#{1,6}\s+|<!\/?h[1-6][^>]*>\s*)/,'');
+  s = s.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]+/gu,' ');
+  s = s.replace(/[*_`~#|>]+/g,' ');
+  s = s.replace(/\s+/g,' ').trim().toLowerCase();
+  return s;
+}
+function matchStepHeading(line){
+  var m = line.match(/^\s{0,3}(#{1,6}|<!\/?h[1-6][^>]*>)\s*(.*)$/i);
+  if (!m) return false;
+  var head = cleanHeadingText(line);
+  if (!head) return false;
+  for (var i = 0; i < STEP_PREFIX.length; i++){
+    var kw = STEP_PREFIX[i];
+    if (head === kw || head.indexOf(kw) === 0) return true;
+    if (/[\u4e00-\u9fa5]/.test(kw) && head.indexOf(kw) >= 0) return true;
+    if (head.indexOf(' ' + kw + ' ') >= 0 || head.indexOf(kw + ':') >= 0 || head.indexOf(kw + ' -') >= 0) return true;
+  }
+  for (var j = 0; j < STEP_WORD.length; j++){
+    var w = STEP_WORD[j];
+    if (head === w || head.indexOf(w + ':') === 0) return true;
+  }
+  return false;
+}
+function headingLevel(line){
+  var m = line.match(/^\s{0,3}(#{1,6}|<!\/?h([1-6])[^>]*>)/i);
+  if (!m) return 7;
+  if (m[2]) return parseInt(m[2], 10);
+  return m[1].replace(/#/g,'').length;
+}
+function parseReadme(md, r){
+  var intro = '', steps = [], image = null, fromSection = false;
+  if (!md) return { intro: intro, steps: steps, image: image, fromSection: false };
+  var lines = md.split(/\r?\n/);
+  // 效果图：第一张图片
+  for (var i = 0; i < lines.length; i++) {
+    var m = lines[i].match(/!\[[^\]]*\]\((https?:[^)\s]+)/);
+    if (!m) m = lines[i].match(/<img[^>]+src="(https:[^"]+)"/);
+    if (m) { image = m[1]; break; }
+  }
+  // 简介：首个标题之后的非空文本段落（最多 3 段）
+  var inIntro = false, introCount = 0;
+  for (var j = 0; j < lines.length && introCount < 3; j++) {
+    var ln = lines[j];
+    if (/^\s{0,3}#{1,2}\s+/.test(ln)) { inIntro = true; continue; }
+    if (inIntro) {
+      var t = ln.replace(/^\s{0,3}(?:#{1,6}\s+|<!\/?h[1-6][^>]*>)/,'').trim();
+      if (t && !/^!\[/.test(ln) && !/^\s*```/.test(ln) && !/^\s*[-*]/.test(t) && !/^\s*\[/.test(t) && t.length > 20) {
+        intro += '<p style="margin-bottom:6px">' + mdInline(t) + '</p>';
+        introCount++;
+      }
+    }
+  }
+  // 操作步骤：先定位 安装/使用/快速开始 等章节
+  var stepIdx = -1;
+  for (var k = 0; k < lines.length; k++) {
+    if (matchStepHeading(lines[k])) { stepIdx = k; break; }
+  }
+  if (stepIdx >= 0) {
+    var lvl = headingLevel(lines[stepIdx]);
+    var block = [];
+    for (var s = stepIdx + 1; s < lines.length; s++) {
+      var l = lines[s];
+      var hl = headingLevel(l);
+      if (hl <= lvl) break;          // 同级或更高级标题：章节结束
+      if (hl < 7) continue;          // 子标题本身不当作内容
+      if (/^\s*```/.test(l)) {       // 代码块
+        var code = [];
+        s++;
+        while (s < lines.length && !/^\s*```/.test(lines[s])) { code.push(lines[s]); s++; }
+        if (code.length) block.push({ type:'code', text: code.join('\n').replace(/\$ /g,'$ ') });
+        continue;
+      }
+      if (/^\s*(?:[-*]|\d+\.)\s+/.test(l)) {
+        block.push({ type:'li', text: l.replace(/^\s*(?:[-*]|\d+\.)\s+/,'') });
+      } else if (l.trim() && !/^\s*!\[/.test(l)) {
+        block.push({ type:'p', text: l.trim() });
+      }
+    }
+    var liCount = 0, codeShown = 0, pShown = 0;
+    for (var bi = 0; bi < block.length; bi++) {
+      var b = block[bi];
+      if (b.type === 'code' && codeShown < 3) {
+        codeShown++;
+        steps.push('<pre class="cmd">' + esc(b.text) + '</pre>');
+      } else if (b.type === 'li' && liCount < 6) {
+        liCount++;
+        steps.push(mdInline(b.text));
+      } else if (b.type === 'p' && pShown < 2 && bi < 6) {
+        pShown++;
+        steps.push(mdInline(b.text));
+      }
+    }
+    if (steps.length) fromSection = true;
+  }
+  // 回退 1：整篇 README 中提取命令型代码块
+  if (!steps.length) {
+    var fences = [];
+    for (var f = 0; f < lines.length; f++) {
+      if (/^\s*```/.test(lines[f])) {
+        var c = [];
+        f++;
+        while (f < lines.length && !/^\s*```/.test(lines[f])) { c.push(lines[f]); f++; }
+        if (c.length && c.length < 40) fences.push(c.join('\n'));
+        if (fences.length >= 6) break;
+      }
+    }
+    var cmdFences = fences.filter(function(c){ return CMD_RE.test(c); });
+    (cmdFences.length ? cmdFences : fences).slice(0, 3).forEach(function(c){
+      steps.push('<pre class="cmd">' + esc(c) + '</pre>');
+    });
+  }
+  // 回退 2：整篇中匹配安装/拉取命令行
+  if (!steps.length) {
+    for (var q = 0; q < lines.length && steps.length < 5; q++) {
+      var t2 = lines[q].trim();
+      if (t2 && t2.length < 130 && CMD_RE.test(t2) && !/^#/.test(t2) && !/^\s*[-*]/.test(t2) && !/^\s*```/.test(t2)) {
+        steps.push('<pre class="cmd">' + esc(t2) + '</pre>');
+      }
+    }
+  }
+  return { intro: intro, steps: steps, image: image, fromSection: fromSection };
+}
+/* ============================================================
+ * 图表与交互控制：ECharts、筛选、刷新、自动更新、初始化
+ * ============================================================ */
+var chartInst = null;
+function loadECharts(cb){
+  if (window.echarts) { cb(); return; }
+  var urls = [
+    'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.1/echarts.min.js'
+  ];
+  var i = 0;
+  function tryNext(){
+    if (i >= urls.length) { cb(); return; }
+    var s = document.createElement('script');
+    s.src = urls[i++];
+    s.onload = function(){ cb(); };
+    s.onerror = function(){ s.remove(); tryNext(); };
+    document.head.appendChild(s);
+  }
+  tryNext();
+}
+function initChart(){
+  if (typeof echarts === 'undefined') {
+    document.getElementById('topChart').innerHTML =
+      '<div class="chart-empty">图表库加载失败（ECharts CDN 不可达），列表数据仍可正常使用。</div>';
+    return;
+  }
+  chartInst = echarts.init(document.getElementById('topChart'));
+  window.addEventListener('resize', function(){ if (chartInst) chartInst.resize(); });
+}
+function renderChart(){
+  if (!chartInst) return;
+  var list = sortByTab().slice(0, 10);
+  var isStars = STATE.tab === 'stars';
+  var isGrowth = STATE.tab === 'growth';
+  var cats = [], vals = [], extra = [];
+  list.forEach(function(r){
+    var short = r.full_name.length > 24 ? r.full_name.slice(0, 22) + '…' : r.full_name;
+    cats.push(short);
+    if (isStars) { vals.push(r.stargazers_count); extra.push(fmtInt(r.stargazers_count)); }
+    else if (isGrowth) {
+      var g = getGrowth(r);
+      vals.push(round1(g.score));
+      extra.push((g.score>=0?'+':'') + fmt(round1(g.score)) + ' 星/天');
+    }
+    else { vals.push(r.stargazers_count); extra.push(fmtInt(r.stargazers_count) + ' 星 · 更新 ' + fmtDT(r.pushed_at)); }
+  });
+  chartInst.setOption({
+    animationDuration: 400,
+    grid: { left: 12, right: 30, top: 18, bottom: 30, containLabel: true },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#182238', borderColor: '#243049', textStyle: { color: '#e8eefb', fontSize: 12 },
+      formatter: function(ps){
+        var p = ps[0];
+        return '<b>' + esc(p.name) + '</b><br>' + esc(extra[p.dataIndex] || '');
+      }
+    },
+    xAxis: {
+      type: 'category', data: cats, axisLine: { lineStyle: { color: '#243049' } },
+      axisLabel: { color: '#9aa8c3', fontSize: 11, interval: 0, rotate: 30 },
+      axisTick: { show: false }
+    },
+    yAxis: {
+      type: isGrowth ? 'value' : 'log',
+      axisLabel: { color: '#6b7a99', fontSize: 11, formatter: function(v){ return fmt(v); } },
+      splitLine: { lineStyle: { color: '#1b2540' } }
+    },
+    series: [{
+      type: 'bar',
+      data: vals,
+      barMaxWidth: 34,
+      itemStyle: {
+        borderRadius: [6, 6, 0, 0],
+        color: {
+          type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [
+            { offset: 0, color: isGrowth ? '#f5b942' : '#3b82f6' },
+            { offset: 1, color: isGrowth ? '#d97706' : '#1d4ed8' }
+          ]
+        }
+      },
+      label: {
+        show: true, position: 'top', color: isGrowth ? '#f5b942' : '#60a5fa',
+        fontSize: 11, formatter: function(p){ return extra[p.dataIndex]; },
+        fontFamily: 'ui-monospace,Consolas,monospace'
+      },
+      emphasis: { itemStyle: { shadowBlur: 18, shadowColor: isGrowth ? 'rgba(245,185,66,.4)' : 'rgba(59,130,246,.5)' } }
+    }]
+  });
+  var note = document.getElementById('chartNote');
+  note.textContent = isStars ? 'Y 轴为对数刻度，避免巨型项目淹没其余项目'
+    : isGrowth ? '单位为「星/天」，黄色柱为增长最快的项目'
+    : '柱高为当前星标数，悬停可见最近更新时间';
+}
+function drawRepoChart(r){
+  var id = 'repoChart-' + esc(r.full_name.replace(/\W/g,'_'));
+  var el = document.getElementById(id);
+  if (!el) return;
+  var snaps = (loadSnap()[r.full_name] || []).slice();
+  if (snaps.length < 2) {
+    el.innerHTML = '<div class="chart-empty">尚未积累足够快照数据。页面每次刷新会记录一次星标数，多次刷新后这里将显示「' + esc(r.full_name) + '」的星标增长曲线（本曲线基于本地历史记录，跨会话保留）。</div>';
+    return;
+  }
+  if (typeof echarts === 'undefined') {
+    el.innerHTML = '<div class="chart-empty">图表库加载失败。</div>';
+    return;
+  }
+  var ch = echarts.init(el);
+  var dates = snaps.map(function(s){ return new Date(s.ts).toLocaleDateString('zh-CN', { month:'2-digit', day:'2-digit' }); });
+  var stars = snaps.map(function(s){ return s.stars; });
+  ch.setOption({
+    animationDuration: 300,
+    grid: { left: 12, right: 16, top: 20, bottom: 24, containLabel: true },
+    tooltip: { trigger: 'axis', backgroundColor: '#182238', borderColor: '#243049', textStyle: { color: '#e8eefb', fontSize: 12 } },
+    xAxis: { type: 'category', data: dates, axisLine: { lineStyle: { color: '#243049' } }, axisLabel: { color: '#9aa8c3', fontSize: 10 }, axisTick: { show: false } },
+    yAxis: { type: 'value', axisLabel: { color: '#6b7a99', fontSize: 10, formatter: function(v){ return fmt(v); } }, splitLine: { lineStyle: { color: '#1b2540' } } },
+    series: [{
+      type: 'line', data: stars, smooth: true, symbol: 'circle', symbolSize: 7,
+      lineStyle: { color: '#34d399', width: 2 },
+      itemStyle: { color: '#34d399', borderColor: '#0a0f1e', borderWidth: 2 },
+      areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [
+        { offset: 0, color: 'rgba(52,211,153,.28)' }, { offset: 1, color: 'rgba(52,211,153,0)' } ] } }
+    }]
+  });
+}
+
+/* ============================================================
+ * APP 层：本地账号 / 会员 / 下载 / 用量 / 流程图 / 视图切换
+ * ============================================================ */
+var USERS_KEY = 'gh_radar_users_v1';
+var SESSION_KEY = 'gh_radar_session_v1';
+var ORDERS_KEY = 'gh_radar_orders_v1';
+var DLS_KEY = 'gh_radar_dls_v1';
+function hashStr(str, salt){
+  // FNV-1a 迭代哈希（本地演示级，非加密标准）
+  var h = 2166136261, x = str + '::' + salt, i, r;
+  for (r = 0; r < 8; r++) {
+    for (i = 0; i < x.length; i++) { h ^= x.charCodeAt(i); h = (h * 16777619) >>> 0; }
+    h ^= r;
+  }
+  return h.toString(16);
+}
+function lsGet(k, d){ try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } }
+function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+function loadUsers(){ return lsGet(USERS_KEY, {}); }
+function currentUser(){ try { return localStorage.getItem(SESSION_KEY); } catch(e){ return null; } }
+function todayStr(){ var d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+function isPro(acc){ return !!(acc && acc.plan === 'pro' && acc.proUntil && acc.proUntil > Date.now()); }
+function checkQuota(kind){
+  var u = currentUser();
+  if (!u) return { ok: false, msg: '请先登录' };
+  var users = loadUsers(), acc = users[u];
+  if (!acc) return { ok: false, msg: '账号不存在' };
+  var key = kind === 'dl' ? 'dlToday' : 'trToday';
+  var dateKey = kind === 'dl' ? 'dlDate' : 'trDate';
+  var limit = isPro(acc) ? 99999 : (kind === 'dl' ? 3 : 5);
+  if (acc[dateKey] !== todayStr()) { acc[dateKey] = todayStr(); acc[key] = 0; }
+  if (acc[key] >= limit) return { ok: false, msg: '额度用尽' };
+  acc[key] = (acc[key] || 0) + 1;
+  lsSet(USERS_KEY, users);
+  return { ok: true };
+}
+function triggerDownload(fn, btn){
+  // 参数校验：fn 必须为合法的 owner/repo 形式，缺失时拦截，不发无效下载请求
+  if (!fn || typeof fn !== 'string' || !/^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(fn)) {
+    toast('项目标识不完整，无法下载源码', true);
+    return;
+  }
+  var q = checkQuota('dl');
+  if (!q.ok) {
+    toast(q.msg === '请先登录' ? '下载源码需要登录，请先注册 / 登录' : '免费版今日下载额度已用完（3 次/天），升级专业版不限次数', true);
+    if (q.msg === '请先登录') openView('auth');
+    return;
+  }
+  var dls = lsGet(DLS_KEY, []);
+  dls.unshift({ fn: fn, ts: Date.now() });
+  lsSet(DLS_KEY, dls.slice(0, 50));
+  window.open('https://github.com/' + fn + '/archive/HEAD.zip', '_blank');
+  toast('正在下载 ' + fn + ' 源码 ZIP，请查看浏览器下载栏');
+  renderMember();
+}
+function activatePro(){
+  var u = currentUser();
+  if (!u) { toast('请先登录', true); openView('auth'); return; }
+  var users = loadUsers(), acc = users[u] || {};
+  var base = (isPro(acc) && acc.proUntil) ? acc.proUntil : Date.now();
+  acc.plan = 'pro'; acc.proUntil = base + 30 * 24 * 3600 * 1000;
+  lsSet(USERS_KEY, users);
+  var orders = lsGet(ORDERS_KEY, []);
+  orders.unshift({ type: 'pro_30d', amt: 19.9, ts: Date.now(), until: acc.proUntil });
+  lsSet(ORDERS_KEY, orders.slice(0, 30));
+  toast('专业版已开通 30 天');
+  renderAuthUI(); renderMember();
+}
+function openView(name){
+  var map = { dash: 'viewDash', member: 'viewMember', auth: 'viewAuth' };
+  for (var k in map) {
+    var el = document.getElementById(map[k]);
+    if (el) el.style.display = (k === name) ? 'block' : 'none';
+  }
+  document.querySelectorAll('.nav-item').forEach(function(n){
+    n.classList.toggle('on', n.getAttribute('data-view') === name);
+  });
+  if (name === 'member') renderMember();
+  if (name === 'dash' && chartInst) setTimeout(function(){ chartInst.resize(); }, 60);
+}
+function renderAuthUI(){
+  var box = document.getElementById('userBox');
+  if (!box) return;
+  var u = currentUser();
+  if (!u) {
+    box.innerHTML = '<button class="btn ghost sm" id="loginBtn">登录</button><button class="btn primary sm" id="regBtn">注册</button>';
+    document.getElementById('loginBtn').addEventListener('click', function(){ openView('auth'); setAuthMode('login'); });
+    document.getElementById('regBtn').addEventListener('click', function(){ openView('auth'); setAuthMode('reg'); });
+    return;
+  }
+  var users = loadUsers(), acc = users[u] || {};
+  var pro = isPro(acc);
+  box.innerHTML = '<span class="who' + (pro ? ' pro' : '') + '">' + esc(u) + (pro ? ' · 专业版' : ' · 免费版') + '</span>' +
+    '<button class="btn ghost sm" id="logoutBtn">退出</button>';
+  document.getElementById('logoutBtn').addEventListener('click', function(){
+    localStorage.removeItem(SESSION_KEY);
+    toast('已退出登录'); renderAuthUI(); openView('dash');
+  });
+}
+var AUTH_MODE = 'login';
+function setAuthMode(m){
+  AUTH_MODE = m;
+  document.getElementById('authTitle').textContent = m === 'login' ? '登录' : '注册';
+  document.getElementById('authSubmit').textContent = m === 'login' ? '登 录' : '注 册';
+  document.getElementById('tabLogin').classList.toggle('on', m === 'login');
+  document.getElementById('tabReg').classList.toggle('on', m === 'reg');
+}
+function handleAuthSubmit(){
+  var user = (document.getElementById('authUser').value || '').trim();
+  var pass = document.getElementById('authPass').value || '';
+  var msg = document.getElementById('authMsg');
+  if (user.length < 2 || user.length > 20) { msg.textContent = '用户名需 2-20 个字符'; return; }
+  if (pass.length < 6) { msg.textContent = '密码至少 6 位'; return; }
+  var users = loadUsers();
+  if (AUTH_MODE === 'reg') {
+    if (users[user]) { msg.textContent = '该用户名已存在，请直接登录'; return; }
+    var salt = Math.random().toString(36).slice(2, 10);
+    users[user] = { salt: salt, hash: hashStr(pass, salt), created: Date.now(), plan: 'free', dlDate: '', dlToday: 0, trDate: '', trToday: 0 };
+    lsSet(USERS_KEY, users);
+    localStorage.setItem(SESSION_KEY, user);
+    toast('注册成功，已自动登录');
+  } else {
+    var acc = users[user];
+    if (!acc || acc.hash !== hashStr(pass, acc.salt)) { msg.textContent = '用户名或密码错误'; return; }
+    localStorage.setItem(SESSION_KEY, user);
+    toast('欢迎回来，' + user);
+  }
+  msg.textContent = '';
+  renderAuthUI(); openView('dash');
+}
+function renderMember(){
+  var u = currentUser();
+  var statusEl = document.getElementById('membStatus');
+  var orderEl = document.getElementById('orderList');
+  var upBtn = document.getElementById('upgradeBtn');
+  if (!statusEl) return;
+  if (!u) {
+    statusEl.innerHTML = '<div class="memb-empty">尚未登录。<button class="btn primary sm" id="goAuthBtn" type="button">去登录 / 注册</button></div>';
+    var gb = document.getElementById('goAuthBtn');
+    if (gb) gb.addEventListener('click', function(){ openView('auth'); });
+    if (upBtn) upBtn.disabled = true;
+  } else {
+    var users = loadUsers(), acc = users[u] || {};
+    var pro = isPro(acc);
+    var dlUsed = acc.dlDate === todayStr() ? (acc.dlToday || 0) : 0;
+    var trUsed = acc.trDate === todayStr() ? (acc.trToday || 0) : 0;
+    statusEl.innerHTML = '<div class="memb-info">' +
+      '<div class="mi"><span class="k">当前套餐</span><span class="v">' + (pro ? '专业版' : '免费版') + '</span></div>' +
+      '<div class="mi"><span class="k">会员到期</span><span class="v">' + (pro ? new Date(acc.proUntil).toLocaleDateString('zh-CN') : '—') + '</span></div>' +
+      '<div class="mi"><span class="k">今日下载</span><span class="v">' + dlUsed + ' / ' + (pro ? '无限' : '3 次/天') + '</span></div>' +
+      '<div class="mi"><span class="k">今日翻译</span><span class="v">' + trUsed + ' / ' + (pro ? '无限' : '5 次/天') + '</span></div>' +
+      '</div>';
+    if (upBtn) { upBtn.disabled = false; upBtn.textContent = pro ? '续费 30 天' : '升级专业版'; }
+  }
+  var orders = lsGet(ORDERS_KEY, []);
+  orderEl.innerHTML = orders.length
+    ? '<table class="ord"><colgroup><col style="width:22%"><col style="width:16%"><col style="width:26%"><col style="width:36%"></colgroup><tr><th>类型</th><th>金额</th><th>时间</th><th>会员有效期至</th></tr>' +
+      orders.map(function(o){
+        return '<tr><td>' + esc(o.type === 'pro_30d' ? '专业版月卡' : o.type) + '</td><td>¥' + o.amt + '</td><td>' + new Date(o.ts).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</td><td>' + new Date(o.until).toLocaleDateString('zh-CN') + '</td></tr>';
+      }).join('') + '</table>'
+    : '<p class="memb-empty">暂无订单记录</p>';
+}
+function openPay(){
+  if (!currentUser()) { toast('请先登录', true); openView('auth'); return; }
+  document.getElementById('payModal').style.display = 'flex';
+}
+function closePay(){ document.getElementById('payModal').style.display = 'none'; }
+function payFlow(){
+  var btn = document.getElementById('payConfirm');
+  btn.disabled = true; btn.textContent = '支付中…';
+  setTimeout(function(){
+    activatePro();
+    btn.disabled = false; btn.textContent = '确认支付 ¥19.9';
+    closePay();
+  }, 1500);
+}
+function bindAppUI(){
+  document.getElementById('navMain').addEventListener('click', function(ev){
+    var n = ev.target.closest('.nav-item');
+    if (n) openView(n.getAttribute('data-view'));
+  });
+  document.getElementById('tabLogin').addEventListener('click', function(){ setAuthMode('login'); });
+  document.getElementById('tabReg').addEventListener('click', function(){ setAuthMode('reg'); });
+  document.getElementById('authSubmit').addEventListener('click', handleAuthSubmit);
+  var up = document.getElementById('upgradeBtn');
+  if (up) up.addEventListener('click', openPay);
+  document.getElementById('payConfirm').addEventListener('click', payFlow);
+  document.getElementById('payCancel').addEventListener('click', closePay);
+  document.querySelectorAll('.pay-methods .pm').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('.pay-methods .pm').forEach(function(x){ x.classList.remove('on'); });
+      b.classList.add('on');
+    });
+  });
+}
+/* ---------- 使用方式流程图 ---------- */
+var FLOW_UID = 0;
+function flowSteps(parsed){
+  var items = [];
+  (parsed.steps || []).forEach(function(s){
+    if (items.length >= 5) return;
+    var tmp = document.createElement('div');
+    tmp.innerHTML = s;
+    var pre = tmp.querySelector('pre.cmd');
+    var text = pre ? (pre.textContent || '') : (tmp.textContent || '');
+    text = text.replace(/\s+/g, ' ').trim().slice(0, 30);
+    if (text) items.push(text);
+  });
+  return items;
+}
+function escAttr(s){ return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function flowSVG(parsed){
+  var items = flowSteps(parsed);
+  var generic = !items.length;
+  if (generic) items = ['获取代码 / 克隆仓库', '安装依赖与工具', '配置运行环境', '启动 / 体验效果'];
+  var n = items.length, boxH = 52, gap = 26, pad = 16, left = 26;
+  var w = 640, h = pad * 2 + n * boxH + (n - 1) * gap;
+  var uid = 'arr' + (++FLOW_UID);
+  var svg = '<svg class="flow" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="使用方式流程图">';
+  svg += '<defs><marker id="' + uid + '" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#3a4a6f"/></marker></defs>';
+  items.forEach(function(t, i){
+    var y = pad + i * (boxH + gap), cy = y + boxH / 2;
+    svg += '<rect x="' + left + '" y="' + y + '" width="' + (w - left * 2) + '" height="' + boxH + '" rx="12" fill="#141d33" stroke="' + (i === 0 ? '#f5b942' : '#243049') + '" stroke-width="1.2"/>';
+    svg += '<circle cx="' + (left + 18) + '" cy="' + cy + '" r="11" fill="' + (i === 0 ? '#f5b942' : '#2f3c5c') + '"/><text x="' + (left + 18) + '" y="' + (cy + 4) + '" text-anchor="middle" font-size="12" font-weight="700" fill="#0a0f1e">' + (i + 1) + '</text>';
+    var lines = [];
+    for (var k = 0; k < t.length; k += 15) lines.push(t.slice(k, k + 15));
+    if (lines.length > 2) { lines = [lines[0], lines[1] + '…']; }
+    var ty = cy - ((lines.length - 1) * 8) + 4;
+    lines.forEach(function(ln, j){
+      svg += '<text x="' + (left + 44) + '" y="' + (ty + j * 16) + '" font-size="13" fill="#e8eefb">' + escAttr(ln) + '</text>';
+    });
+    if (i < n - 1) {
+      svg += '<line x1="' + (left + 18) + '" y1="' + (y + boxH + 2) + '" x2="' + (left + 18) + '" y2="' + (y + boxH + gap - 2) + '" stroke="#3a4a6f" stroke-width="1.6" marker-end="url(#' + uid + ')"/>';
+    }
+  });
+  svg += '</svg>';
+  if (generic) svg += '<p class="flow-note">该项目 README 未含标准安装步骤，以上为通用使用流程示意，可点击「GitHub」查看官方说明。</p>';
+  return svg;
+}
+
+/* ---------- 交互控制 ---------- */
+function debounce(fn, ms){
+  var t;
+  return function(){
+    var args = arguments;
+    clearTimeout(t);
+    t = setTimeout(function(){ fn.apply(null, args); }, ms);
+  };
+}
+function bindControls(){
+  document.querySelectorAll('.tab').forEach(function(el){
+    el.addEventListener('click', function(){
+      document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('on'); });
+      el.classList.add('on');
+      STATE.tab = el.getAttribute('data-tab');
+      renderAll();
+    });
+  });
+  document.getElementById('searchInput').addEventListener('input', debounce(function(ev){
+    STATE.keyword = ev.target.value;
+    renderAll();
+  }, 250));
+  document.getElementById('langSelect').addEventListener('change', function(ev){
+    STATE.lang = ev.target.value;
+    renderAll();
+  });
+  document.getElementById('tokenInput').addEventListener('change', function(ev){
+    STATE.token = ev.target.value.trim();
+    localStorage.setItem(TOKEN_KEY, STATE.token);
+    toast(STATE.token ? 'Token 已保存，配额将提升' : '已清除 Token');
+  });
+}
+function toggleAuto(){
+  STATE.autoRefresh = !STATE.autoRefresh;
+  localStorage.setItem(AUTO_KEY, STATE.autoRefresh ? '1' : '0');
+  setupAutoRefresh();
+  updateAutoLabel();
+  toast(STATE.autoRefresh ? '已开启自动刷新（每 30 分钟一次）' : '已关闭自动刷新');
+}
+function setBtnLoading(on, which){
+  var btn = document.getElementById('refreshBtn');
+  btn.classList.toggle('loading', !!on);
+  var label = btn.childNodes[1];
+  if (label) label.nodeValue = on ? '  拉取中…' : '刷新数据';
+}
+function updateAutoLabel(){
+  var lbl = document.getElementById('autoLabel');
+  var t = document.getElementById('autoToggle');
+  lbl.textContent = STATE.autoRefresh ? '自动刷新 30 分钟' : '自动刷新已关闭';
+  t.classList.toggle('off', !STATE.autoRefresh);
+}
+function setupAutoRefresh(){
+  clearInterval(STATE.refreshTimer);
+  if (STATE.autoRefresh) {
+    STATE.refreshTimer = setInterval(function(){
+      fetchAll();
+      toast('自动刷新：已拉取最新数据');
+    }, 30 * 60 * 1000);
+  }
+}
+
+/* ---------- 初始化 ---------- */
+function init(){
+  // 恢复设置
+  try {
+    STATE.token = localStorage.getItem(TOKEN_KEY) || '';
+    var a = localStorage.getItem(AUTO_KEY);
+    if (a === '0') STATE.autoRefresh = false;
+  } catch(e){}
+  document.getElementById('tokenInput').value = STATE.token;
+  bindControls();
+  bindAppUI();
+  renderAuthUI();
+  updateAutoLabel();
+  setupAutoRefresh();
+  // 异步加载图表库，不阻塞数据请求
+  loadECharts(function(){ initChart(); renderChart(); });
+  // 有缓存先秒开，再后台拉最新数据
+  if (hydrateCache()) renderAll();
+  fetchAll();
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+<!-- ==== JS:END ==== -->
+</body>
+</html>
